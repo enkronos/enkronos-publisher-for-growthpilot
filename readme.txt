@@ -4,7 +4,7 @@ Tags: rest-api, publishing, api, hmac, security
 Requires at least: 6.2
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,7 @@ Security-first design:
 * Optional IP allowlist (CIDR supported)
 * Rate limiting
 * Audit logs for all API requests
+* Idempotent post and page creation with `Idempotency-Key`
 
 Content features:
 * Create/update/list/delete posts and pages
@@ -59,6 +60,10 @@ Signature string:
 * `BODY_SHA256 = sha256(raw_body)` (hex), empty body => sha256("")
 * `PATH` excludes query string and includes `/wp-json/growthpilot/v1/...`
 
+== Idempotent publishing ==
+
+Requests to `POST /wp-json/growthpilot/v1/posts` and `POST /wp-json/growthpilot/v1/pages` must include a non-empty `Idempotency-Key` header. The plugin stores the key and request-body hash on the created object. Retrying the same key and body returns the original object with HTTP 200 and `idempotent_replay: true`; reusing a key with a different body returns HTTP 409. This allows governed workers to retry safely without creating duplicate content.
+
 == Screenshots ==
 
 1. Connection page (generate/revoke API keys, scopes, IP allowlist).
@@ -66,10 +71,16 @@ Signature string:
 
 == Changelog ==
 
+= 1.1.0 =
+* Add idempotent post and page creation for safe publication retries.
+
 = 1.0.0 =
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Enable safe retry handling for governed publishers.
 
 = 1.0.0 =
 Initial release.

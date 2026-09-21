@@ -272,7 +272,36 @@ class REST {
     }
     
     // Posts/Pages helpers
-    private static function handle_post_create_update(array $payload, ?int $post_id = null): array|\WP_Error {
+    private static function find_idempotent_post(string $post_type, string $idempotency_key, string $body_hash): array|\WP_Error|null {
+        $post_ids = get_posts([
+            'post_type' => $post_type,
+            'post_status' => 'any',
+            'meta_key' => '_enkrpufo_idempotency_key',
+            'meta_value' => $idempotency_key,
+            'posts_per_page' => 1,
+            'fields' => 'ids',
+            'no_found_rows' => true,
+        ]);
+
+        if (empty($post_ids)) {
+            return null;
+        }
+
+        $existing_id = (int)$post_ids[0];
+        $stored_hash = (string)get_post_meta($existing_id, '_enkrpufo_idempotency_hash', true);
+        if (!hash_equals($stored_hash, $body_hash)) {
+            return Utils::error_response(
+                'IDEMPOTENCY_KEY_REUSED',
+                'The Idempotency-Key was already used with a different request body.',
+                [],
+                409
+            );
+        }
+
+        return ['post_id' => $existing_id, 'idempotent_replay' => true];
+    }
+
+    private static function handle_post_create_update(array $payload, ?int $post_id = null, ?string $idempotency_key = null, ?string $body_hash = null): array|\WP_Error {
         $sanitized = Utils::sanitize_post_payload($payload);
         
         if (!Utils::validate_post_type($sanitized['post_type'])) {
@@ -281,6 +310,13 @@ class REST {
         
         if (!Utils::validate_post_status($sanitized['status'])) {
             return Utils::error_response('INVALID_STATUS', 'Invalid post status', [], 400);
+        }
+
+        if (!$post_id && $idempotency_key && $body_hash) {
+            $existing = self::find_idempotent_post($sanitized['post_type'], $idempotency_key, $body_hash);
+            if ($existing !== null) {
+                return $existing;
+            }
         }
         
         $post_data = [
@@ -315,6 +351,15 @@ class REST {
         }
         
         $post_id = $result;
+
+        if (!$post_id) {
+            return Utils::error_response('WP_INSERT_FAILED', 'WordPress did not return a post identifier.', [], 500);
+        }
+
+        if ($idempotency_key && $body_hash) {
+            update_post_meta($post_id, '_enkrpufo_idempotency_key', $idempotency_key);
+            update_post_meta($post_id, '_enkrpufo_idempotency_hash', $body_hash);
+        }
         
         // Set categories
         if ($sanitized['post_type'] === 'post' && !empty($sanitized['categories'])) {
@@ -458,8 +503,15 @@ class REST {
     public static function create_post(\WP_REST_Request $request): \WP_REST_Response {
         $payload = $request->get_json_params();
         $payload['post_type'] = 'post';
+        $idempotency_key = trim((string)$request->get_header('Idempotency-Key'));
+        if ($idempotency_key === '' || strlen($idempotency_key) > 200) {
+            $error = Utils::error_response('IDEMPOTENCY_KEY_REQUIRED', 'A non-empty Idempotency-Key header is required for post creation.', [], 400);
+            Logger::log_response(400, $error->get_error_code());
+            return new \WP_REST_Response($error->data['data'], 400);
+        }
+        $body_hash = hash('sha256', (string)$request->get_body());
         
-        $result = self::handle_post_create_update($payload);
+        $result = self::handle_post_create_update($payload, null, $idempotency_key, $body_hash);
         
         if (is_wp_error($result)) {
             Logger::log_response($result->data['status'], $result->get_error_code());
@@ -470,15 +522,23 @@ class REST {
         $data = self::format_post_response($post);
         
         Logger::set_wp_object_id($result['post_id']);
-        Logger::log_response(201);
-        return new \WP_REST_Response(Utils::success_response($data), 201);
+        $status = !empty($result['idempotent_replay']) ? 200 : 201;
+        Logger::log_response($status);
+        return new \WP_REST_Response(Utils::success_response($data, ['idempotent_replay' => !empty($result['idempotent_replay'])]), $status);
     }
     
     public static function create_page(\WP_REST_Request $request): \WP_REST_Response {
         $payload = $request->get_json_params();
         $payload['post_type'] = 'page';
+        $idempotency_key = trim((string)$request->get_header('Idempotency-Key'));
+        if ($idempotency_key === '' || strlen($idempotency_key) > 200) {
+            $error = Utils::error_response('IDEMPOTENCY_KEY_REQUIRED', 'A non-empty Idempotency-Key header is required for page creation.', [], 400);
+            Logger::log_response(400, $error->get_error_code());
+            return new \WP_REST_Response($error->data['data'], 400);
+        }
+        $body_hash = hash('sha256', (string)$request->get_body());
         
-        $result = self::handle_post_create_update($payload);
+        $result = self::handle_post_create_update($payload, null, $idempotency_key, $body_hash);
         
         if (is_wp_error($result)) {
             Logger::log_response($result->data['status'], $result->get_error_code());
@@ -489,8 +549,9 @@ class REST {
         $data = self::format_post_response($post);
         
         Logger::set_wp_object_id($result['post_id']);
-        Logger::log_response(201);
-        return new \WP_REST_Response(Utils::success_response($data), 201);
+        $status = !empty($result['idempotent_replay']) ? 200 : 201;
+        Logger::log_response($status);
+        return new \WP_REST_Response(Utils::success_response($data, ['idempotent_replay' => !empty($result['idempotent_replay'])]), $status);
     }
     
     public static function update_post(\WP_REST_Request $request): \WP_REST_Response {

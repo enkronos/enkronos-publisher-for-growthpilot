@@ -3,7 +3,7 @@
  * Plugin Name: Enkronos Publisher for GrowthPilot.cloud
  * Plugin URI: https://github.com/enkronos
  * Description: Secure WordPress REST API connector for publishing content from GrowthPilot.cloud.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Enkronos
  * Author URI: https://enkronos.com
  * License: GPLv2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('ENKRPUFO_VERSION', '1.0.0');
+define('ENKRPUFO_VERSION', '1.1.0');
 define('ENKRPUFO_PLUGIN_FILE', __FILE__);
 define('ENKRPUFO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ENKRPUFO_PLUGIN_URL', plugin_dir_url(__FILE__));
