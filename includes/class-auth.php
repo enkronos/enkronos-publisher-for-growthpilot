@@ -124,6 +124,24 @@ class Auth {
                     );
                 }
                 
+                $secret = null;
+                if (!empty($key['secret_encrypted']) && is_string($key['secret_encrypted'])) {
+                    $secret = Utils::decrypt_secret($key['secret_encrypted']);
+                } elseif (!empty($key['secret']) && is_string($key['secret'])) {
+                    // Compatibility for keys created by an older installation
+                    // that retained the secret in the option value.
+                    $secret = $key['secret'];
+                }
+                if ($secret === null) {
+                    return Utils::error_response(
+                        'AUTH_KEY_MATERIAL_UNAVAILABLE',
+                        'This API key must be regenerated before it can authenticate requests.',
+                        [],
+                        401
+                    );
+                }
+
+                $key['secret'] = $secret;
                 return $key;
             }
         }
@@ -276,6 +294,7 @@ class Auth {
         
         $stored_key = $key_data;
         unset($stored_key['secret']);
+        $stored_key['secret_encrypted'] = Utils::encrypt_secret($secret);
         
         $keys[] = $stored_key;
         update_option('enkrpufo_api_keys', $keys);

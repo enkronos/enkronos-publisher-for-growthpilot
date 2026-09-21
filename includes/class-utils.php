@@ -40,6 +40,38 @@ class Utils {
     public static function verify_secret(string $secret, string $hash): bool {
         return hash_equals($hash, self::hash_secret($secret));
     }
+
+    public static function encrypt_secret(string $secret): string {
+        $cipher = 'aes-256-cbc';
+        $iv_length = openssl_cipher_iv_length($cipher);
+        if ($iv_length === false) {
+            throw new \RuntimeException('Secret encryption is unavailable on this PHP runtime.');
+        }
+
+        $iv = random_bytes($iv_length);
+        $key = hash('sha256', wp_salt('auth'), true);
+        $encrypted = openssl_encrypt($secret, $cipher, $key, OPENSSL_RAW_DATA, $iv);
+        if ($encrypted === false) {
+            throw new \RuntimeException('Secret encryption failed.');
+        }
+
+        return base64_encode($iv . $encrypted);
+    }
+
+    public static function decrypt_secret(string $encoded): ?string {
+        $cipher = 'aes-256-cbc';
+        $iv_length = openssl_cipher_iv_length($cipher);
+        if ($iv_length === false) return null;
+
+        $decoded = base64_decode($encoded, true);
+        if ($decoded === false || strlen($decoded) <= $iv_length) return null;
+
+        $iv = substr($decoded, 0, $iv_length);
+        $encrypted = substr($decoded, $iv_length);
+        $key = hash('sha256', wp_salt('auth'), true);
+        $secret = openssl_decrypt($encrypted, $cipher, $key, OPENSSL_RAW_DATA, $iv);
+        return is_string($secret) && $secret !== '' ? $secret : null;
+    }
     
     public static function get_client_ip(): string {
         $forwarded_for = self::get_server_var('HTTP_X_FORWARDED_FOR');

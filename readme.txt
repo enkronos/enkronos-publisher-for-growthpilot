@@ -4,7 +4,7 @@ Tags: rest-api, publishing, api, hmac, security
 Requires at least: 6.2
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -71,6 +71,10 @@ Requests to `POST /wp-json/growthpilot/v1/posts` and `POST /wp-json/growthpilot/
 
 == Changelog ==
 
+= 1.1.1 =
+* Fixed HMAC key persistence by encrypting the recoverable signing secret with the WordPress auth salt.
+* Return a controlled 401 response when a legacy key has no recoverable secret instead of producing a server error.
+
 = 1.1.0 =
 * Add idempotent post and page creation for safe publication retries.
 
@@ -78,6 +82,9 @@ Requests to `POST /wp-json/growthpilot/v1/posts` and `POST /wp-json/growthpilot/
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.1.1 =
+Regenerate API keys created before 1.1.1; their signing secret cannot be recovered from the legacy hash-only record.
 
 = 1.1.0 =
 Enable safe retry handling for governed publishers.
