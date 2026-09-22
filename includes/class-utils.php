@@ -161,6 +161,9 @@ class Utils {
             'featured_media' => $payload['featured_media'] ?? null,
             'seo' => $payload['seo'] ?? null,
             'custom_fields' => (array)($payload['custom_fields'] ?? []),
+            'language' => WPML::normalize_language($payload['language'] ?? ''),
+            'translation_group' => WPML::normalize_translation_group($payload['translation_group'] ?? ''),
+            'translation_of' => max(0, (int)($payload['translation_of'] ?? 0)),
         ];
     }
     
