@@ -285,7 +285,13 @@ class Auth {
             'created_at' => gmdate('Y-m-d H:i:s'),
             'last_used_at' => null,
             'revoked_at' => null,
-            'scopes' => array_map('sanitize_key', $scopes),
+            // Keep the canonical scope names intact. WordPress's sanitize_key()
+            // strips the colon from values such as "content:read", which makes
+            // an otherwise valid key fail every scope check at runtime.
+            'scopes' => array_values(array_intersect(
+                array_map('sanitize_text_field', $scopes),
+                array_keys(self::get_available_scopes())
+            )),
             'allowed_ips' => array_map('sanitize_text_field', $allowed_ips),
             'secret' => $secret,
         ];
