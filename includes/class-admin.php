@@ -493,7 +493,7 @@ class Admin {
         }
         
         $name = self::input_string(INPUT_POST, 'key_name');
-        $scopes = array_map('sanitize_key', self::input_array(INPUT_POST, 'scopes'));
+        $scopes = array_map('sanitize_text_field', self::input_array(INPUT_POST, 'scopes'));
         $allowed_ips_raw = sanitize_textarea_field(self::input_string(INPUT_POST, 'allowed_ips'));
         $allowed_ips = array_filter(array_map('trim', explode("\n", $allowed_ips_raw)));
         
