@@ -356,6 +356,8 @@ class REST {
             return Utils::error_response('WP_INSERT_FAILED', 'WordPress did not return a post identifier.', [], 500);
         }
 
+        WPML::apply_post_translation($post_id, $sanitized);
+
         if ($idempotency_key && $body_hash) {
             update_post_meta($post_id, '_enkrpufo_idempotency_key', $idempotency_key);
             update_post_meta($post_id, '_enkrpufo_idempotency_hash', $body_hash);
@@ -427,6 +429,7 @@ class REST {
         }
         
         $data['seo'] = SEO::get_seo_fields($post->ID);
+        $data['translation'] = WPML::get_post_translation_data($post->ID);
         
         return $data;
     }

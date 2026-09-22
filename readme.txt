@@ -4,7 +4,7 @@ Tags: rest-api, publishing, api, hmac, security
 Requires at least: 6.2
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -27,6 +27,7 @@ Content features:
 * Upload media and set featured images
 * Create/list categories and tags
 * Optional SEO meta integration (Yoast SEO / Rank Math), with safe fallbacks
+* Optional WPML language and translation-group linking, with read-back metadata
 
 == Installation ==
 
@@ -64,6 +65,12 @@ Signature string:
 
 Requests to `POST /wp-json/growthpilot/v1/posts` and `POST /wp-json/growthpilot/v1/pages` must include a non-empty `Idempotency-Key` header. The plugin stores the key and request-body hash on the created object. Retrying the same key and body returns the original object with HTTP 200 and `idempotent_replay: true`; reusing a key with a different body returns HTTP 409. This allows governed workers to retry safely without creating duplicate content.
 
+== Bilingual content and WPML ==
+
+The post and page payload accepts optional `language`, `translation_group` and `translation_of` fields. `language` may be a locale such as `it-IT` or `en-US` and is normalized to its primary language code. `translation_group` is a stable caller-provided identifier shared by translations; `translation_of` may contain the WordPress post ID of the source translation.
+
+When WPML is active, the plugin calls WPML's language-details API and uses the source post or existing translation group to preserve the same translation group. When WPML is not active, the metadata is still stored and returned by read-back, so the connector remains safe and auditable. Responses include a `translation` object with `language`, `translation_group`, `translation_of`, `wpml_active` and `wpml_trid`.
+
 == Screenshots ==
 
 1. Connection page (generate/revoke API keys, scopes, IP allowlist).
@@ -74,6 +81,9 @@ Requests to `POST /wp-json/growthpilot/v1/posts` and `POST /wp-json/growthpilot/
 = 1.1.1 =
 * Fixed HMAC key persistence by encrypting the recoverable signing secret with the WordPress auth salt.
 * Return a controlled 401 response when a legacy key has no recoverable secret instead of producing a server error.
+
+= 1.1.2 =
+* Add optional WPML language and translation-group linking with read-back metadata.
 
 = 1.1.0 =
 * Add idempotent post and page creation for safe publication retries.

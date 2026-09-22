@@ -1,0 +1,25 @@
+name: WordPress Plugin CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  php-lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['8.0', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring
+      - name: Lint PHP files
+        shell: bash
+        run: find . -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Build plugin package
+        run: ./scripts/build-wordpress-zip.sh /tmp/enkronos-publisher-for-growthpilot.zip
